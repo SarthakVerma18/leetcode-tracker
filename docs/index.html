@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LeetCode Progress</title>
+<meta name="description" content="A live log of every LeetCode problem I've solved." />
+<meta property="og:title" content="LeetCode Progress" />
+<meta property="og:description" content="A live log of every LeetCode problem I've solved." />
+<link rel="stylesheet" href="styles.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>&#9889;</text></svg>" />
+<style>
+  .ro-badge {
+    font-size: 11px; color: var(--muted); border: 1px solid var(--line);
+    padding: 3px 9px; border-radius: 20px;
+  }
+  .heat { display: flex; gap: 2px; flex-wrap: wrap; margin-top: 10px; }
+  .heat i { width: 8px; height: 8px; border-radius: 2px; background: var(--line); }
+  .topic-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 8px; margin-bottom: 18px;
+  }
+  .topic-row {
+    background: var(--panel); border: 1px solid var(--line-soft);
+    border-radius: 8px; padding: 9px 12px; cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .topic-row:hover { border-color: var(--accent); }
+  .topic-row .nm { font-size: 12.5px; }
+  .topic-row .ct { font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .section-title {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px;
+    color: var(--muted); font-weight: 600; margin: 4px 0 10px;
+  }
+  .conf.ro i { cursor: default; }
+  .conf.ro i:hover { outline: none; }
+  footer {
+    margin-top: 26px; padding-top: 16px; border-top: 1px solid var(--line-soft);
+    color: var(--faint); font-size: 12px; line-height: 1.7;
+  }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="logo">LC</div>
+      <div>
+        <h1>LeetCode Progress</h1>
+        <div class="sub">
+          <a id="profileLink" href="#" target="_blank" rel="noreferrer">@…</a>
+          <span id="rankLine"></span>
+        </div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <span class="ro-badge" id="updated">…</span>
+    <button id="btnCsv">Export CSV</button>
+  </header>
+
+  <section class="cards" id="cards"></section>
+
+  <div class="section-title" id="topicTitle">Topics</div>
+  <div class="topic-grid" id="topicGrid"></div>
+
+  <div class="toolbar">
+    <input type="search" id="search" placeholder="Search problems or topics…" />
+    <div class="pills" id="diffPills">
+      <button class="pill on" data-diff="all">All</button>
+      <button class="pill easy" data-diff="Easy">Easy</button>
+      <button class="pill medium" data-diff="Medium">Medium</button>
+      <button class="pill hard" data-diff="Hard">Hard</button>
+    </div>
+    <div class="pills" id="statusPills">
+      <button class="pill on" data-status="all">Any status</button>
+      <button class="pill" data-status="solid">Solid</button>
+      <button class="pill" data-status="revise">Revise</button>
+      <button class="pill" data-status="revisit">Revisit</button>
+    </div>
+    <select id="topicFilter"><option value="">All topics</option></select>
+    <button id="btnClear">Clear</button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th data-sort="qid" style="width:64px">#</th>
+          <th data-sort="title">Problem</th>
+          <th data-sort="difficulty" style="width:96px">Difficulty</th>
+          <th class="nosort hide-sm">Topics</th>
+          <th data-sort="first_ac" style="width:112px">Solved</th>
+          <th data-sort="status" style="width:100px">Status</th>
+          <th data-sort="confidence" style="width:96px">Confidence</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div id="emptyState"></div>
+  </div>
+
+  <div class="count-line" id="countLine"></div>
+
+  <footer>
+    Auto-generated from the LeetCode API and refreshed by a scheduled job.
+    Read-only view — solving and note-taking happen in the local tracker.
+    <br />Built with <a href="https://github.com/SarthakVerma18/leetcode-tracker">leetcode-tracker</a>.
+  </footer>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

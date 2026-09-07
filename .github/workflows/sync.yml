@@ -1,0 +1,50 @@
+name: Sync LeetCode progress
+
+on:
+  schedule:
+    # Every 6 hours. GitHub queues cron jobs, so expect some drift.
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "styles.css"
+      - "build_site.py"
+      - "leetcode_tracker.py"
+      - "annotations.json"
+      - ".github/workflows/sync.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-site
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build site
+        env:
+          LEETCODE_SESSION: ${{ secrets.LEETCODE_SESSION }}
+        run: python build_site.py --ci
+
+      - name: Commit updated snapshot
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs
+          if git diff --staged --quiet; then
+            echo "No changes to publish."
+          else
+            git commit -m "chore: refresh LeetCode snapshot"
+            git push
+          fi

@@ -1,0 +1,6 @@
+secrets.json
+tracker.db
+tracker.db-wal
+tracker.db-shm
+solved.csv
+__pycache__/

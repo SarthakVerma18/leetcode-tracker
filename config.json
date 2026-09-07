@@ -1,0 +1,14 @@
+{
+  "username": "ljm13jZT5n",
+  "port": 8765,
+  "poll_minutes": 10,
+  "catalog_refresh_days": 7,
+  "open_browser": true,
+  "review_intervals": {
+    "1": 1,
+    "2": 3,
+    "3": 7,
+    "4": 16,
+    "5": 35
+  }
+}

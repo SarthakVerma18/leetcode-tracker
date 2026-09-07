@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LeetCode Tracker</title>
+<link rel="stylesheet" href="styles.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>&#9889;</text></svg>" />
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="logo">LC</div>
+      <div>
+        <h1>LeetCode Tracker</h1>
+        <div class="sub">
+          <a id="profileLink" href="#" target="_blank" rel="noreferrer">@…</a>
+          <span id="rankLine"></span>
+        </div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="sync-box">
+      <span class="dot" id="syncDot"></span>
+      <span id="syncMsg">loading…</span>
+    </div>
+    <button id="btnManual">Add manually</button>
+    <a class="btn" href="/api/export.csv">Export CSV</a>
+    <button id="btnSync" class="primary">Sync now</button>
+  </header>
+
+  <div id="banner"></div>
+
+  <section class="cards" id="cards"></section>
+
+  <div class="toolbar">
+    <input type="search" id="search" placeholder="Search problems, topics, notes…" />
+
+    <div class="pills" id="diffPills">
+      <button class="pill on" data-diff="all">All</button>
+      <button class="pill easy" data-diff="Easy">Easy</button>
+      <button class="pill medium" data-diff="Medium">Medium</button>
+      <button class="pill hard" data-diff="Hard">Hard</button>
+    </div>
+
+    <div class="pills" id="statusPills">
+      <button class="pill on" data-status="all">Any status</button>
+      <button class="pill" data-status="new">New</button>
+      <button class="pill" data-status="solid">Solid</button>
+      <button class="pill" data-status="revise">Revise</button>
+      <button class="pill" data-status="revisit">Revisit</button>
+    </div>
+
+    <div class="pills" id="viewPills">
+      <button class="pill" data-view="due">Due for review</button>
+      <button class="pill" data-view="unrated">Unrated</button>
+      <button class="pill" data-view="starred">★ Starred</button>
+    </div>
+
+    <select id="topicFilter"><option value="">All topics</option></select>
+    <button id="btnClear">Clear</button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th class="nosort" style="width:28px"></th>
+          <th data-sort="qid" style="width:60px">#</th>
+          <th data-sort="title">Problem</th>
+          <th data-sort="difficulty" style="width:90px">Difficulty</th>
+          <th class="nosort hide-sm">Topics</th>
+          <th data-sort="first_ac" style="width:110px">Solved</th>
+          <th data-sort="status" style="width:110px">Status</th>
+          <th data-sort="confidence" style="width:80px">Confidence</th>
+          <th data-sort="last_revised" style="width:105px" class="hide-sm">Revised</th>
+          <th data-sort="next_review" style="width:105px">Next review</th>
+          <th class="nosort">Notes</th>
+          <th class="nosort" style="width:60px"></th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div id="emptyState"></div>
+  </div>
+
+  <div class="count-line" id="countLine"></div>
+</div>
+
+<div id="modalHost"></div>
+<script src="app.js"></script>
+</body>
+</html>
