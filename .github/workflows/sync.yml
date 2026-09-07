@@ -27,6 +27,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history so the retry below can rebase onto a moved main.
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -44,7 +47,17 @@ jobs:
           git add docs
           if git diff --staged --quiet; then
             echo "No changes to publish."
-          else
-            git commit -m "chore: refresh LeetCode snapshot"
-            git push
+            exit 0
           fi
+          git commit -m "chore: refresh LeetCode snapshot"
+          # Another run (or a local push) may have moved main in the meantime.
+          for attempt in 1 2 3; do
+            if git push; then
+              echo "Published on attempt $attempt."
+              exit 0
+            fi
+            echo "Push rejected; rebasing onto origin/main and retrying."
+            git pull --rebase origin main
+          done
+          echo "::error::Could not push after 3 attempts."
+          exit 1
