@@ -4,6 +4,7 @@ const state = {
   data: null,
   filters: { q: '', diff: 'all', status: 'all', topic: '', view: null },
   sort: { key: 'first_ac', dir: -1 },
+  shuffle: null,   // slugs of a randomly drawn practice set, or null
 };
 
 const $ = (s) => document.querySelector(s);
@@ -106,6 +107,7 @@ function visibleRows() {
   const f = state.filters;
   const q = f.q.trim().toLowerCase();
   const rows = state.data.problems.filter((r) => {
+    if (state.shuffle && !state.shuffle.includes(r.slug)) return false;
     if (f.diff !== 'all' && r.difficulty !== f.diff) return false;
     if (f.status !== 'all' && r.status !== f.status) return false;
     if (f.topic && !r.topics.includes(f.topic)) return false;
@@ -276,8 +278,34 @@ async function init() {
     renderTable();
   };
 
+  const shuffleBtn = $('#btnShuffle');
+  shuffleBtn.onclick = () => {
+    if (state.shuffle) {                     // second click clears the set
+      state.shuffle = null;
+      shuffleBtn.classList.remove('on');
+      shuffleBtn.textContent = 'Shuffle a practice set';
+      renderTable();
+      return;
+    }
+    const n = Math.max(1, parseInt($('#shuffleN').value, 10) || 5);
+    // Draw from whatever the current filters already narrowed things down to.
+    const pool = visibleRows().slice();
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    state.shuffle = pool.slice(0, n).map((r) => r.slug);
+    shuffleBtn.classList.add('on');
+    shuffleBtn.textContent = `Practice set of ${state.shuffle.length} — clear`;
+    renderTable();
+    document.querySelector('.table-wrap').scrollIntoView({ behavior: 'smooth' });
+  };
+
   $('#btnClear').onclick = () => {
     state.filters = { q: '', diff: 'all', status: 'all', topic: '', view: null };
+    state.shuffle = null;
+    shuffleBtn.classList.remove('on');
+    shuffleBtn.textContent = 'Shuffle a practice set';
     $('#search').value = '';
     sel.value = '';
     document.querySelectorAll('.pill').forEach((p) => p.classList.remove('on'));

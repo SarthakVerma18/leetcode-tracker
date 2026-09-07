@@ -76,6 +76,31 @@ Problems imported by backfill have no solve date (LeetCode only dates recent
 submissions), so they sit in an **Unrated** bucket rather than all becoming due
 on the same day. Give one a confidence score and it joins the schedule.
 
+## Practice mode
+
+Hit **Practice**, say how many problems you want, and it shuffles that many out
+of a pool and serves them one at a time — problem link, your old notes, and a
+timer. Rate each one and it folds straight back into the schedule:
+
+| Answer | Key | Effect |
+|---|---|---|
+| Nailed it | <kbd>1</kbd> | Status → Solid, confidence up (min 4) |
+| Shaky | <kbd>2</kbd> | Status → Revise, confidence down (max 2) |
+| Failed | <kbd>3</kbd> | Status → Revisit, confidence → 1, back tomorrow |
+| Skip | <kbd>4</kbd> | Nothing recorded |
+
+Every non-skip answer stamps *last revised*, so the next review date moves on
+its own. <kbd>Esc</kbd> leaves a session open to resume later; clicking
+**Practice** again picks it back up where you stopped.
+
+Pools to draw from: everything solved, due for review, unrated, weak spots
+(confidence ≤ 2 or marked revise/revisit), marked revisit, or starred — each
+optionally narrowed by difficulty and topic.
+
+The public page has a lighter version: **Shuffle a practice set** draws N random
+problems from whatever the filters currently show. It doesn't record anything —
+that's what the local app is for.
+
 ## The public page
 
 `build_site.py` writes `docs/`, which GitHub Pages serves. A scheduled Action
@@ -89,10 +114,13 @@ Two files carry state between local and CI:
   refresh the solved list without discarding review progress. Regenerated
   locally by `python build_site.py`; CI treats it as read-only truth.
 
-To publish local changes:
+To publish local changes, double-click `publish.bat` (or run the equivalent).
+It pulls **before** rebuilding, so the generated `docs/data.json` never
+conflicts with what CI pushed:
 
 ```bash
-python build_site.py && git add -A && git commit -m "update" && git push
+git pull --rebase origin main && python build_site.py && git add -A \
+  && git commit -m "Publish progress update" && git push origin main
 ```
 
 ## Config
@@ -113,6 +141,7 @@ python build_site.py && git add -A && git commit -m "update" && git push
 ```
 leetcode_tracker.py   local server, sync engine, SQLite store
 index.html/app.js     local dashboard (read/write)
+practice.js           practice-mode UI
 site/                 public page template (read-only)
 build_site.py         generates docs/ from the database
 docs/                 generated — served by GitHub Pages

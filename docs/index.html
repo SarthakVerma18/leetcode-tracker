@@ -34,6 +34,13 @@
   }
   .conf.ro i { cursor: default; }
   .conf.ro i:hover { outline: none; }
+  .shuffle-box { align-items: center; gap: 2px; }
+  .shuffle-box input {
+    width: 56px; padding: 5px 8px; font-size: 12.5px;
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 7px;
+    color: var(--text); text-align: center;
+  }
+  .shuffle-box .pill.on { color: var(--accent); }
   footer {
     margin-top: 26px; padding-top: 16px; border-top: 1px solid var(--line-soft);
     color: var(--faint); font-size: 12px; line-height: 1.7;
@@ -80,6 +87,10 @@
       <button class="pill" data-status="revisit">Revisit</button>
     </div>
     <select id="topicFilter"><option value="">All topics</option></select>
+    <div class="pills shuffle-box">
+      <input type="number" id="shuffleN" min="1" max="50" value="5" title="How many problems" />
+      <button class="pill" id="btnShuffle">Shuffle a practice set</button>
+    </div>
     <button id="btnClear">Clear</button>
   </div>
 

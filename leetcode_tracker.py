@@ -19,6 +19,7 @@ import csv
 import io
 import json
 import os
+import random
 import sqlite3
 import sys
 import threading
@@ -122,6 +123,21 @@ CREATE TABLE IF NOT EXISTS notes (
     updated_at   INTEGER
 );
 CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
+CREATE TABLE IF NOT EXISTS practice_sessions (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at  INTEGER,
+    finished_at INTEGER,
+    pool        TEXT,
+    size        INTEGER
+);
+CREATE TABLE IF NOT EXISTS practice_items (
+    session_id  INTEGER,
+    slug        TEXT,
+    position    INTEGER,
+    outcome     TEXT,
+    answered_at INTEGER,
+    PRIMARY KEY (session_id, slug)
+);
 CREATE INDEX IF NOT EXISTS idx_submissions_slug ON submissions(slug);
 """
 
@@ -704,6 +720,8 @@ def build_state():
         "authenticated": bool(load_secrets().get("LEETCODE_SESSION")),
         "username": CONFIG.get("username", ""),
         "poll_minutes": CONFIG.get("poll_minutes", 10),
+        "practice_pools": practice_pool_counts(),
+        "practice_active": active_practice() is not None,
     }
 
 
@@ -787,6 +805,152 @@ def add_manual(entries):
     return added, slugs
 
 
+# --------------------------------------------------------------------------
+# practice mode
+# --------------------------------------------------------------------------
+
+# Which problems a session can draw from.
+POOLS = {
+    "all": lambda r: True,
+    "due": lambda r: r["due"],
+    "unrated": lambda r: r["unrated"],
+    "weak": lambda r: r["status"] in ("revise", "revisit")
+    or 0 < r["confidence"] <= 2,
+    "revisit": lambda r: r["status"] == "revisit",
+    "starred": lambda r: r["starred"],
+}
+
+# What each answer does to the problem's annotations. Every non-skip answer
+# also stamps last_revised, which is what drives the next review date.
+OUTCOMES = {
+    "nailed": {"status": "solid", "bump": +1, "floor": 4},
+    "shaky": {"status": "revise", "bump": -1, "floor": 2},
+    "failed": {"status": "revisit", "bump": -2, "floor": 1},
+    "skipped": None,
+}
+
+
+def create_practice(count, pool="all", difficulty=None, topic=None):
+    """Shuffle the matching problems and take `count` of them."""
+    pick = POOLS.get(pool, POOLS["all"])
+    candidates = [
+        r for r in build_rows()
+        if pick(r)
+        and (not difficulty or r["difficulty"] == difficulty)
+        and (not topic or topic in r["topics"])
+    ]
+    if not candidates:
+        return None
+    count = max(1, min(int(count), len(candidates)))
+    chosen = random.sample(candidates, count)
+
+    with db() as conn:
+        # Only one session runs at a time; starting a new one drops the old.
+        conn.execute(
+            "DELETE FROM practice_items WHERE session_id IN "
+            "(SELECT id FROM practice_sessions WHERE finished_at IS NULL)"
+        )
+        conn.execute("DELETE FROM practice_sessions WHERE finished_at IS NULL")
+        cur = conn.execute(
+            "INSERT INTO practice_sessions(created_at, finished_at, pool, size) "
+            "VALUES(?, NULL, ?, ?)",
+            (_now(), pool, count),
+        )
+        sid = cur.lastrowid
+        conn.executemany(
+            "INSERT INTO practice_items(session_id, slug, position) VALUES(?, ?, ?)",
+            [(sid, r["slug"], i) for i, r in enumerate(chosen)],
+        )
+    return sid
+
+
+def active_practice():
+    """The unfinished session, with its problems in order. None if idle."""
+    with db() as conn:
+        sess = conn.execute(
+            "SELECT * FROM practice_sessions WHERE finished_at IS NULL "
+            "ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        if not sess:
+            return None
+        items = conn.execute(
+            "SELECT slug, position, outcome, answered_at FROM practice_items "
+            "WHERE session_id=? ORDER BY position",
+            (sess["id"],),
+        ).fetchall()
+
+    by_slug = {r["slug"]: r for r in build_rows()}
+    problems = []
+    for it in items:
+        row = by_slug.get(it["slug"])
+        if not row:
+            continue
+        problems.append(
+            dict(row, outcome=it["outcome"], position=it["position"],
+                 answered_at=it["answered_at"])
+        )
+    return {
+        "id": sess["id"],
+        "created_at": sess["created_at"],
+        "pool": sess["pool"],
+        "size": sess["size"],
+        "answered": sum(1 for p in problems if p["outcome"]),
+        "problems": problems,
+    }
+
+
+def answer_practice(slug, outcome):
+    """Record an answer and fold it into the problem's confidence / status."""
+    if outcome not in OUTCOMES:
+        return False
+    with db() as conn:
+        sess = conn.execute(
+            "SELECT id FROM practice_sessions WHERE finished_at IS NULL "
+            "ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        if not sess:
+            return False
+        conn.execute(
+            "UPDATE practice_items SET outcome=?, answered_at=? "
+            "WHERE session_id=? AND slug=?",
+            (outcome, _now(), sess["id"], slug),
+        )
+        row = conn.execute(
+            "SELECT confidence FROM notes WHERE slug=?", (slug,)
+        ).fetchone()
+    current = (row["confidence"] if row else 0) or 0
+
+    rule = OUTCOMES[outcome]
+    if rule is None:  # skipped - deliberately leaves the problem untouched
+        return True
+
+    # Start from 3 when unrated so a first answer lands somewhere sensible.
+    base = current or 3
+    new_conf = max(1, min(5, base + rule["bump"]))
+    if rule["bump"] > 0:
+        new_conf = max(new_conf, rule["floor"])
+    else:
+        new_conf = min(new_conf, rule["floor"])
+
+    update_note(slug, {"status": rule["status"], "confidence": new_conf})
+    mark_revised(slug)
+    return True
+
+
+def finish_practice():
+    with db() as conn:
+        conn.execute(
+            "UPDATE practice_sessions SET finished_at=? WHERE finished_at IS NULL",
+            (_now(),),
+        )
+
+
+def practice_pool_counts():
+    """How many problems each pool would offer right now."""
+    rows = build_rows()
+    return {name: sum(1 for r in rows if fn(r)) for name, fn in POOLS.items()}
+
+
 def export_csv():
     buf = io.StringIO()
     writer = csv.writer(buf, lineterminator="\n")
@@ -817,6 +981,7 @@ STATIC = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/index.html": ("index.html", "text/html; charset=utf-8"),
     "/app.js": ("app.js", "application/javascript; charset=utf-8"),
+    "/practice.js": ("practice.js", "application/javascript; charset=utf-8"),
     "/styles.css": ("styles.css", "text/css; charset=utf-8"),
 }
 
@@ -860,6 +1025,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, fh.read(), ctype)
         if path == "/api/state":
             return self._json(build_state())
+        if path == "/api/practice":
+            return self._json({"session": active_practice()})
         if path == "/api/export.csv":
             body = export_csv().encode("utf-8-sig")
             self.send_response(200)
@@ -900,6 +1067,26 @@ class Handler(BaseHTTPRequestHandler):
                 daemon=True,
             ).start()
             return self._json({"ok": True, "added": added, "slugs": slugs})
+        if path == "/api/practice/new":
+            sid = create_practice(
+                body.get("count", 5),
+                body.get("pool", "all"),
+                body.get("difficulty") or None,
+                body.get("topic") or None,
+            )
+            if sid is None:
+                return self._json(
+                    {"error": "No problems match those filters."}, 400
+                )
+            return self._json({"ok": True, "session": active_practice()})
+        if path == "/api/practice/answer":
+            ok = answer_practice(body.get("slug"), body.get("outcome"))
+            if not ok:
+                return self._json({"error": "no active session"}, 400)
+            return self._json({"ok": True, "session": active_practice()})
+        if path == "/api/practice/finish":
+            finish_practice()
+            return self._json({"ok": True})
         if path == "/api/settings":
             for key in ("poll_minutes", "username"):
                 if key in body:
